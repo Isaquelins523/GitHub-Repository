@@ -1,33 +1,49 @@
 import { IRepository } from "@/app/types/IGithubRepository";
 import axios from "axios";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
-type props = {
+type Props = {
   org: string;
 };
 
-export const useGithubRepositories = ({ org }: props) => {
+export const useGithubRepositories = ({ org }: Props) => {
   const [repo, setRepo] = useState<IRepository[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState();
-
-  const fetcher = useCallback(() => {
-    axios
-      .get(`https://api.github.com/orgs/${org}/repos`)
-      .then((response) => {
-        setRepo(response.data);
-      })
-      .catch((err) => {
-        setError(err);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [org]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
-    fetcher();
-  }, [fetcher]);
+    if (!org) return;
 
-  return { repo, isLoading, error, refetch: fetcher };
+    const controller = new AbortController();
+
+    const fetchRepos = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const response = await axios.get(
+          `https://api.github.com/orgs/${org}/repos`,
+          {
+            signal: controller.signal,
+          },
+        );
+
+        setRepo(response.data);
+      } catch (err: any) {
+        if (err.name !== "CanceledError") {
+          setError(err);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRepos();
+
+    return () => {
+      controller.abort();
+    };
+  }, [org]);
+
+  return { repo, isLoading, error };
 };
