@@ -1,5 +1,5 @@
 import { IRepository } from "@/app/types/IGithubRepository";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { useEffect, useState } from "react";
 
 type Props = {
@@ -9,7 +9,7 @@ type Props = {
 export const useGithubRepositories = ({ org }: Props) => {
   const [repo, setRepo] = useState<IRepository[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<unknown>(null);
+  const [error, setError] = useState<AxiosError | null>(null);
 
   useEffect(() => {
     if (!org) return;
@@ -29,8 +29,8 @@ export const useGithubRepositories = ({ org }: Props) => {
         );
 
         setRepo(response.data);
-      } catch (err: any) {
-        if (err.name !== "CanceledError") {
+      } catch (err: unknown) {
+        if (axios.isAxiosError(err) && err.code !== "ERR_CANCELED") {
           setError(err);
         }
       } finally {
